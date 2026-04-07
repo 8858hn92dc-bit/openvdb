@@ -1,0 +1,64 @@
+name: Build vdb_remesh
+
+on:
+  push:
+    branches: [ master, main, 'feature/**' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cache vcpkg installed packages (openvdb dependency chain is heavy, first install ~10 min)
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-windows-openvdb-x64
+          restore-keys: |
+            vcpkg-windows-openvdb-
+
+      - name: Install OpenVDB via vcpkg
+        shell: pwsh
+        run: |
+          vcpkg install openvdb:x64-windows
+          vcpkg integrate install
+
+      # Cache CMake build directory to enable incremental compilation
+      - name: Cache build directory
+        uses: actions/cache@v4
+        with:
+          path: vdb_remesh/build
+          key: build-windows-${{ hashFiles('vdb_remesh/CMakeLists.txt') }}
+          restore-keys: |
+            build-windows-
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -B vdb_remesh/build -S vdb_remesh -A x64 \
+            -G "Visual Studio 17 2022" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-windows
+
+      - name: Build
+        run: cmake --build vdb_remesh/build --config Release
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: vdb_remesh-windows
+          path: |
+            vdb_remesh/build/Release/vdb_remesh.exe
+            vdb_remesh/build/Release/*.dll
+          retention-days: 14
