@@ -57,12 +57,20 @@ static bool load_obj(const std::string &path, ObjMesh &out)
             std::vector<int> idx;
             std::string elem;
             while (ss >> elem) {
-                int v = std::stoi(elem);   // takes chars up to '/'
-                if (v < 0)
-                    v = (int)out.verts.size() + v;  // relative
-                else
-                    v -= 1;                          // 1-based -> 0-based
-                idx.push_back(v);
+                // stoi stops at the first non-digit char, so "v/vt/vn" gives v.
+                // We also pass &pos to detect completely non-numeric tokens.
+                try {
+                    std::size_t pos = 0;
+                    int v = std::stoi(elem, &pos);
+                    if (pos == 0) continue;   // no digits at start – skip
+                    if (v < 0)
+                        v = (int)out.verts.size() + v;  // relative
+                    else
+                        v -= 1;                          // 1-based -> 0-based
+                    idx.push_back(v);
+                } catch (...) {
+                    continue;   // skip malformed tokens
+                }
             }
             if (idx.size() == 3) {
                 out.tris.push_back({idx[0], idx[1], idx[2]});
@@ -189,11 +197,14 @@ int main(int argc, char **argv)
         } else if ((a == "--out" || a == "-o") && i + 1 < argc) {
             out_path = argv[++i];
         } else if (a == "--voxel-size" && i + 1 < argc) {
-            voxel_size = std::stof(argv[++i]);
+            try { voxel_size = std::stof(argv[++i]); }
+            catch (...) { std::cerr << "Error: invalid value for --voxel-size\n"; return 1; }
         } else if (a == "--isovalue" && i + 1 < argc) {
-            isovalue = std::stof(argv[++i]);
+            try { isovalue = std::stof(argv[++i]); }
+            catch (...) { std::cerr << "Error: invalid value for --isovalue\n"; return 1; }
         } else if (a == "--adaptivity" && i + 1 < argc) {
-            adaptivity = std::stof(argv[++i]);
+            try { adaptivity = std::stof(argv[++i]); }
+            catch (...) { std::cerr << "Error: invalid value for --adaptivity\n"; return 1; }
         } else if (a == "--help" || a == "-h") {
             print_usage();
             return 0;
