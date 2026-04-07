@@ -37,7 +37,7 @@ jobs:
       - name: Cache build directory
         uses: actions/cache@v4
         with:
-          path: vdb_remesh\build
+          path: vdb_remesh/build
           key: build-windows-${{ hashFiles('vdb_remesh/CMakeLists.txt') }}
           restore-keys: |
             build-windows-
@@ -52,13 +52,13 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows
 
       - name: Build
-        run: cmake --build vdb_remesh\build --config Release
+        run: cmake --build vdb_remesh/build --config Release
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: vdb_remesh-windows
           path: |
-            vdb_remesh\build\Release\vdb_remesh.exe
-            vdb_remesh\build\Release\*.dll
+            vdb_remesh/build/Release/vdb_remesh.exe
+            vdb_remesh/build/Release/*.dll
           retention-days: 14
